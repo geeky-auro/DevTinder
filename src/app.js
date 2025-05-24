@@ -1,11 +1,18 @@
 const express = require("express");
-const { adminAuth, userAuth } = require("../middlewares/authMiddleware");
+const {
+  adminAuth,
+  userAuth,
+  authJWT,
+} = require("../middlewares/authMiddleware");
 const app = express();
 const connectDB = require("../configs/database");
 const User = require("../models/user");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const PORT = 3000;
 
 app.use(express.json());
+app.use(cookieParser());
 // app.use("/", (req, res) => {
 //   res.send("Hello Buddy :0");
 // });
@@ -22,6 +29,44 @@ app.post("/signup", async (req, res) => {
   }
 });
 
+app.get("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      throw new Error("Invalid Credentials");
+    }
+    // TODO: Add a password validator as well ;)
+    if (password) {
+      const token = await jwt.sign({ _id: user._id }, "DEV@Tinder$790", {
+        expiresIn: "1d",
+      });
+      res.cookie("token", token, {
+        expires: new Date(Date.now() + 8 * 36000000),
+      });
+      res.send("Login Successful!!");
+      console.log(token);
+    }
+  } catch (err) {
+    res.status(500).send("ERROR: " + err.message);
+  }
+});
+
+app.get("/profile", authJWT, async (req, res) => {
+  // Inorder to read cookies we need to use an express recommended Middleware  called cookie-parser
+  try {
+    const user = req.user;
+    if (!user) {
+      throw new Error(`User doesn't exist`);
+    }
+    res.status(200).send(user);
+  } catch (err) {
+    res.status(501).send(err.message);
+  }
+});
+
+app.post("/sendingConnectionRequest", authJWT, async (req, res) => {});
+
 //Always place more specific routes before dynamic routes (:param) in Express.
 app.get("/user/feed", async (req, res) => {
   console.log(await User.countDocuments({}));
@@ -32,7 +77,6 @@ app.get("/user/feed", async (req, res) => {
 
 app.get("/user/:email", async (req, res, next) => {
   const email = req.params?.email;
-  const user = new User();
   const userObj = await User.findOne({ email: email });
   console.log(userObj);
   res.status(200).send(userObj);
@@ -83,7 +127,6 @@ app.get("/user/id/:id", async (req, res) => {
   res.status(200).send(documents);
 });
 
-app.use(express.json()); // For parsing application/json
 connectDB()
   .then(() => {
     console.log("Database connected Established");
