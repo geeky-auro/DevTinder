@@ -38,14 +38,11 @@ app.get("/login", async (req, res) => {
     }
     // TODO: Add a password validator as well ;)
     if (password) {
-      const token = await jwt.sign({ _id: user._id }, "DEV@Tinder$790", {
-        expiresIn: "1d",
-      });
+      const token = await user.getJWT();
       res.cookie("token", token, {
         expires: new Date(Date.now() + 8 * 36000000),
       });
       res.send("Login Successful!!");
-      console.log(token);
     }
   } catch (err) {
     res.status(500).send("ERROR: " + err.message);
