@@ -16,6 +16,11 @@ const userSchema = new moongose.Schema({
   gender: {
     type: String,
   },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
 });
 
 const userModel = moongose.model("User", userSchema);
